@@ -62,8 +62,8 @@ date_scraped = Date.today.to_s
 doc.css('.wpfd-search-result').each_with_index do |row, index|
   # Extract the title from the <a> tag's title attribute
   title_reference = row.at_css('.wpfd_downloadlink')['title']
-  council_reference = title_reference.split(' ').first
-  description = title_reference.match(/(\d+[A-Za-z]*\s[\w\s,]+)/)&.captures&.second
+  council_reference = title_reference.split(' - ').first
+  description = title_reference.match(/(\d+[A-Za-z]*\s[\w\s,]+)/)&.captures&.first
   address = title_reference.match(/-\s([^-]+)-/)&.captures&.first
 
   on_notice_to = title_reference.match(/(\d{1,2} [A-Za-z]+ \d{4})/)&.captures&.first
