@@ -1,25 +1,102 @@
-# This is a template for a Ruby scraper on morph.io (https://morph.io)
-# including some code snippets below that you should find helpful
+require 'nokogiri'
+require 'open-uri'
+require 'sqlite3'
+require 'logger'
+require 'date'
 
-# require 'scraperwiki'
-# require 'mechanize'
-#
-# agent = Mechanize.new
-#
-# # Read in a page
-# page = agent.get("http://foo.com")
-#
-# # Find something on the page using css selectors
-# p page.at('div.content')
-#
-# # Write out to the sqlite database using scraperwiki library
-# ScraperWiki.save_sqlite(["name"], {"name" => "susan", "occupation" => "software developer"})
-#
-# # An arbitrary query against the database
-# ScraperWiki.select("* from data where 'name'='peter'")
+# Initialize the logger
+logger = Logger.new(STDOUT)
 
-# You don't have to do things with the Mechanize or ScraperWiki libraries.
-# You can use whatever gems you want: https://morph.io/documentation/ruby
-# All that matters is that your final data is written to an SQLite database
-# called "data.sqlite" in the current working directory which has at least a table
-# called "data".
+# Define the URL of the page
+url = 'https://www.centralcoast.tas.gov.au/current-planning-applications/'
+
+# Step 1: Fetch the page content
+begin
+  logger.info("Fetching page content from: #{url}")
+  page_html = open(url).read
+  logger.info("Successfully fetched page content.")
+rescue => e
+  logger.error("Failed to fetch page content: #{e}")
+  exit
+end
+
+# Step 2: Parse the page content using Nokogiri
+doc = Nokogiri::HTML(page_html)
+
+# Step 3: Initialize the SQLite database
+db = SQLite3::Database.new "data.sqlite"
+
+# Create table
+db.execute <<-SQL
+  CREATE TABLE IF NOT EXISTS centralcoast (
+    id INTEGER PRIMARY KEY,
+    description TEXT,
+    date_scraped TEXT,
+    date_received TEXT,
+    on_notice_to TEXT,
+    address TEXT,
+    council_reference TEXT,
+    applicant TEXT,
+    owner TEXT,
+    stage_description TEXT,
+    stage_status TEXT,
+    document_description TEXT,
+    title_reference TEXT
+  );
+SQL
+
+# Define variables for storing extracted data for each entry
+address = ''  
+description = ''
+on_notice_to = ''
+title_reference = ''
+date_received = ''
+council_reference = ''
+applicant = ''
+owner = ''
+stage_description = ''
+stage_status = ''
+document_description = ''
+date_scraped = Date.today.to_s
+
+# Step 4: Extract data for each document
+doc.css('.wpfd-search-result').each_with_index do |row, index|
+  # Extract document title (Council reference is the first part of the title)
+  title_reference = row.at_css('.wpfd-file-crop-title').text.strip
+  council_reference = title_reference.split(' ').first  # Extract the first part as council reference
+
+  # Extract description (additional info if available)
+  description = row.at_css('.file_desc.optional') ? row.at_css('.file_desc.optional').text.strip : ''
+
+  # Extract date modified (which corresponds to "date received")
+  date_received = row.at_css('.file_modified.optional').text.strip
+  date_received = Date.strptime(date_received, "%d-%m-%Y").to_s # Convert to ISO 8601 format
+
+  # Extract the on_notice_to date (you could extract this from the file title if it's available)
+  on_notice_to = title_reference.match(/(\d{1,2} [A-Za-z]+ \d{4})/)&.captures&.first  # If available in title
+  on_notice_to = Date.strptime(on_notice_to, "%d %B %Y").to_s if on_notice_to # Convert to ISO 8601 format
+
+  # Extract document URL (from the <a> tag in the 'Download' column)
+  document_description = row.at_css('.wpfd_downloadlink')['href']
+
+  # Log the extracted data for debugging purposes
+  logger.info("Extracted Data: Title: #{description}, Council Reference: #{council_reference}, Date Received: #{date_received}, On Notice To: #{on_notice_to}, Document URL: #{document_description}")
+
+  # Step 5: Ensure the entry does not already exist before inserting
+  existing_entry = db.execute("SELECT * FROM centralcoast WHERE council_reference = ?", council_reference)
+
+  if existing_entry.empty?  # Only insert if the entry doesn't already exist
+    # Save data to the database
+    db.execute("INSERT INTO centralcoast 
+      (description, date_scraped, date_received, on_notice_to, council_reference, document_description, title_reference, date_scraped) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [description, date_scraped, date_received, on_notice_to, council_reference, document_description, title_reference, date_scraped])
+
+    logger.info("Data for #{council_reference} saved to database.")
+  else
+    logger.info("Duplicate entry for document #{council_reference} found. Skipping insertion.")
+  end
+end
+
+# Finish
+logger.info("Data has been successfully inserted into the database.")
