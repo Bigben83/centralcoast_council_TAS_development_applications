@@ -63,15 +63,15 @@ doc.css('.wpfd-search-result').each_with_index do |row, index|
   # Extract the title from the <a> tag's title attribute
   title_reference = row.at_css('.wpfd_downloadlink')['title']
   council_reference = title_reference.split(' ').first
-  address = title_reference.match(/(\d+[A-Za-z]*\s[\w\s,]+)/)&.captures&.first
-  description = title_reference.match(/-\s([^-]+)-/)&.captures&.first
+  description = title_reference.match(/(\d+[A-Za-z]*\s[\w\s,]+)/)&.captures&.first
+  address = title_reference.match(/-\s([^-]+)-/)&.captures&.first
 
   on_notice_to = title_reference.match(/(\d{1,2} [A-Za-z]+ \d{4})/)&.captures&.first
   # on_notice_to = Date.strptime(on_notice_to, "%d %B %Y").to_s if on_notice_to # Convert to ISO 8601 format
 
   document_description = row.at_css('.wpfd_downloadlink')['href']
   # Log the extracted data for debugging purposes
-  logger.info("Extracted Data: Title: #{description}, Council Reference: #{council_reference}, Date Received: #{date_received}, On Notice To: #{on_notice_to}, Document URL: #{document_description}")
+  logger.info("Extracted Data: Title: #{description}, Address: #{address}, Council Reference: #{council_reference}, Date Received: #{date_received}, On Notice To: #{on_notice_to}, Document URL: #{document_description}")
 
   # Step 5: Ensure the entry does not already exist before inserting
   existing_entry = db.execute("SELECT * FROM centralcoast WHERE council_reference = ?", council_reference)
