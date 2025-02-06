@@ -74,7 +74,7 @@ doc.css('.wpfd-search-result').each_with_index do |row, index|
 
   # Extract the on_notice_to date (you could extract this from the file title if it's available)
   on_notice_to = title_reference.match(/(\d{1,2} [A-Za-z]+ \d{4})/)&.captures&.first  # If available in title
-  on_notice_to = Date.strptime(on_notice_to, "%d %B %Y").to_s if on_notice_to # Convert to ISO 8601 format
+  # on_notice_to = Date.strptime(on_notice_to, "%d %B %Y").to_s if on_notice_to # Convert to ISO 8601 format
 
   # Extract document URL (from the <a> tag in the 'Download' column)
   document_description = row.at_css('.wpfd_downloadlink')['href']
