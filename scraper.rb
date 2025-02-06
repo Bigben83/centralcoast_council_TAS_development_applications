@@ -70,7 +70,7 @@ doc.css('.wpfd-search-result').each_with_index do |row, index|
 
   # Extract date modified (which corresponds to "date received")
   date_received = row.at_css('.file_modified.optional').text.strip
-  date_received = Date.strptime(date_received, "%d-%m-%Y").to_s # Convert to ISO 8601 format
+  # date_received = Date.strptime(date_received, "%d-%m-%Y").to_s # Convert to ISO 8601 format
 
   # Extract the on_notice_to date (you could extract this from the file title if it's available)
   on_notice_to = title_reference.match(/(\d{1,2} [A-Za-z]+ \d{4})/)&.captures&.first  # If available in title
