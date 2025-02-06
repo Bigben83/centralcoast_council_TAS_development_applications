@@ -59,26 +59,17 @@ stage_status = ''
 document_description = ''
 date_scraped = Date.today.to_s
 
-# Step 4: Extract data for each document
 doc.css('.wpfd-search-result').each_with_index do |row, index|
-  # Extract document title (Council reference is the first part of the title)
-  title_reference = row.at_css('.wpfd-file-crop-title').text.strip
-  council_reference = title_reference.split(' ').first  # Extract the first part as council reference
+  # Extract the title from the <a> tag's title attribute
+  title_reference = row.at_css('.wpfd_downloadlink')['title']
+  council_reference = title_reference.split(' ').first
+  address = title_reference.match(/(\d+[A-Za-z]*\s[\w\s,]+)/)&.captures&.first
+  description = title_reference.match(/-\s([^-]+)-/)&.captures&.first
 
-  # Extract description (additional info if available)
-  description = row.at_css('.file_desc.optional') ? row.at_css('.file_desc.optional').text.strip : ''
-
-  # Extract date modified (which corresponds to "date received")
-  date_received = row.at_css('.file_modified.optional').text.strip
-  # date_received = Date.strptime(date_received, "%d-%m-%Y").to_s # Convert to ISO 8601 format
-
-  # Extract the on_notice_to date (you could extract this from the file title if it's available)
-  on_notice_to = title_reference.match(/(\d{1,2} [A-Za-z]+ \d{4})/)&.captures&.first  # If available in title
+  on_notice_to = title_reference.match(/(\d{1,2} [A-Za-z]+ \d{4})/)&.captures&.first
   # on_notice_to = Date.strptime(on_notice_to, "%d %B %Y").to_s if on_notice_to # Convert to ISO 8601 format
 
-  # Extract document URL (from the <a> tag in the 'Download' column)
   document_description = row.at_css('.wpfd_downloadlink')['href']
-
   # Log the extracted data for debugging purposes
   logger.info("Extracted Data: Title: #{description}, Council Reference: #{council_reference}, Date Received: #{date_received}, On Notice To: #{on_notice_to}, Document URL: #{document_description}")
 
@@ -88,9 +79,9 @@ doc.css('.wpfd-search-result').each_with_index do |row, index|
   if existing_entry.empty?  # Only insert if the entry doesn't already exist
     # Save data to the database
     db.execute("INSERT INTO centralcoast 
-      (description, date_scraped, date_received, on_notice_to, council_reference, document_description, title_reference, date_scraped) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-      [description, date_scraped, date_received, on_notice_to, council_reference, document_description, title_reference, date_scraped])
+      (description, date_scraped, date_received, on_notice_to, council_reference, document_description, title_reference) 
+      VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [description, date_scraped, date_received, on_notice_to, council_reference, document_description, title_reference])
 
     logger.info("Data for #{council_reference} saved to database.")
   else
