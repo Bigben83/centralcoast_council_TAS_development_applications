@@ -60,19 +60,28 @@ document_description = ''
 date_scraped = Date.today.to_s
 
 doc.css('.wpfd-search-result').each_with_index do |row, index|
-  # Extract the title from the <a> tag's title attribute
-  title_reference = row.at_css('.wpfd_downloadlink')['title']
-  council_reference = title_reference.split(' - ').first
-  description = title_reference.match(/(\d+[A-Za-z]*\s[\w\s,]+)/)&.captures&.first
-  address = title_reference.match(/-\s([^-]+)-/)&.captures&.first
+# Extract the title from the <a> tag's title attribute
+title_reference = row.at_css('.wpfd_downloadlink')['title']
 
-  on_notice_to = title_reference.match(/(\d{1,2} [A-Za-z]+ \d{4})/)&.captures&.first
-  # on_notice_to = Date.strptime(on_notice_to, "%d %B %Y").to_s if on_notice_to # Convert to ISO 8601 format
+# Extract council reference (DA number from the title)
+council_reference = title_reference.split(' - ').first
 
-  document_description = row.at_css('.wpfd_downloadlink')['href']
-  # Log the extracted data for debugging purposes
-  logger.info("Extracted Data: Title: #{description}, Address: #{address}, Council Reference: #{council_reference}, Date Received: #{date_received}, On Notice To: #{on_notice_to}, Document URL: #{document_description}")
+# Extract address from the title (using regex to capture the address part)
+address = title_reference.match(/(\d+[A-Za-z]*\s[\w\s,]+)/)&.captures&.first
 
+# Extract description from the title (everything between the address and "Notification expiry date")
+description = title_reference.match(/-\s([^-\d]+)-\sNotification expiry date/)&.captures&.first&.strip
+
+# Extract the on_notice_to date from the title
+on_notice_to = title_reference.match(/(\d{1,2} [A-Za-z]+ \d{4})/)&.captures&.first
+
+# Document URL (from the <a> tag in the 'Download' column)
+document_description = row.at_css('.wpfd_downloadlink')['href']
+
+# Log the extracted data for debugging purposes
+logger.info("Extracted Data: Title: #{description}, Address: #{address}, Council Reference: #{council_reference}, On Notice To: #{on_notice_to}, Document URL: #{document_description}")
+
+  
   # Step 5: Ensure the entry does not already exist before inserting
   existing_entry = db.execute("SELECT * FROM centralcoast WHERE council_reference = ?", council_reference)
 
